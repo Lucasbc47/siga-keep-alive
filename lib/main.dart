@@ -12,7 +12,7 @@ class SigaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SIGA Keep Alive',
+      title: 'SIGA Alunos',
       theme: ThemeData(primarySwatch: Colors.red, useMaterial3: true),
       home: const SigaWebView(),
     );
@@ -35,7 +35,7 @@ class _SigaWebViewState extends State<SigaWebView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SIGA Keep Alive'),
+        title: const Text('SIGA Alunos'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
