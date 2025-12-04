@@ -1,0 +1,29 @@
+# Build outputs
+build/
+*.apk
+*.aab
+*.ipa
+
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+pubspec.lock
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# OS
+.DS_Store
+*.swp
+*.swo
+
+# Logs
+*.log
