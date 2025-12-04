@@ -85,7 +85,9 @@ class _SigaWebViewState extends State<SigaWebView> {
             Expanded(
               child: InAppWebView(
                 initialUrlRequest: URLRequest(
-                  url: WebUri('https://siga.cps.sp.gov.br'),
+                  url: WebUri(
+                    'https://siga.cps.sp.gov.br/sigaaluno/applogin.aspx',
+                  ),
                 ),
                 initialSettings: InAppWebViewSettings(
                   javaScriptEnabled: true,
