@@ -1,6 +1,6 @@
 <div align="center">
 
-# SIGA Keep Alive
+# SIGA Keep Alive - v1.0.2
 
 App Flutter simples para manter sua sessão do SIGA ativa.
 
