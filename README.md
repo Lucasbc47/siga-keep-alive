@@ -10,6 +10,16 @@ App Flutter simples para manter sua sessão do SIGA ativa.
 
 O [SIGA (Centro Paula Sousa)](https://siga.cps.sp.gov.br/) expira a sessão quando você fecha o navegador. Este app mantém uma WebView em background para manter sua sessão ativa, mesmo com o app minimizado.
 
+## Instalação
+
+### Via Release
+
+1. Acesse a [página de releases](https://github.com/Lucasbc47/siga-keep-alive/releases)
+2. Baixe o arquivo APK da versão mais recente
+3. Instale o APK no seu dispositivo Android
+
+### Compilar do código-fonte
+
 ## Como usar
 
 1. Abra o app e faça login no SIGA através do botão da Microsoft
