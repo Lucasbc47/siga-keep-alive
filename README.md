@@ -30,3 +30,13 @@ flutter build apk
 # ou
 flutter build appbundle
 ```
+
+## Sobre o projeto
+
+Este projeto foi desenvolvido por **Lucas Costa**, motivado por um outro projeto que fazia a mesma coisa. Como gostaria de ver uma solução open source, resolvi fazer minha própria versão e disponibilizá-la para outros estudantes.
+
+## Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+
