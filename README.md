@@ -1,6 +1,6 @@
 <div align="center">
 
-# SIGA Keep Alive - v1.0.2
+# SIGA Keep Alive
 
 ### v1.0.2
 
