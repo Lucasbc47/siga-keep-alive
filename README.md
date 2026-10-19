@@ -20,7 +20,7 @@ O [SIGA (Centro Paula Sousa)](https://siga.cps.sp.gov.br/) expira a sessão quan
 2. Baixe o arquivo APK da versão mais recente
 3. Instale o APK no seu dispositivo Android
 
-### Compilar do código-fonte
+Para compilar você mesmo, veja a seção [Compilar](#compilar).
 
 ## Como usar
 

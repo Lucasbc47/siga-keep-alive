@@ -1,20 +1,33 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-void main() async {
+const String sigaLoginUrl = 'https://siga.cps.sp.gov.br/sigaaluno/applogin.aspx';
+const Duration keepAliveInterval = Duration(minutes: 5);
+const String sigaUserAgent =
+    'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const SigaApp());
 }
 
 class SigaApp extends StatelessWidget {
-  const SigaApp({super.key});
+  const SigaApp({super.key, this.home = const SigaWebView()});
+
+  final Widget home;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SIGA Alunos',
-      theme: ThemeData(primarySwatch: Colors.red, useMaterial3: true),
-      home: const SigaWebView(),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
+        useMaterial3: true,
+      ),
+      home: home,
     );
   }
 }
@@ -28,49 +41,155 @@ class SigaWebView extends StatefulWidget {
 
 class _SigaWebViewState extends State<SigaWebView> {
   InAppWebViewController? webViewController;
-  double progress = 0;
+  final ValueNotifier<double> progress = ValueNotifier(0);
+  final ValueNotifier<bool> hasError = ValueNotifier(false);
+  final ValueNotifier<DateTime?> lastPing = ValueNotifier(null);
+  Timer? _keepAliveTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _keepAliveTimer = Timer.periodic(keepAliveInterval, (_) => _ping());
+  }
+
+  /// Faz uma requisição autenticada ao SIGA para renovar a sessão.
+  /// Só roda enquanto o processo do app estiver vivo.
+  Future<void> _ping() async {
+    final controller = webViewController;
+    if (controller == null || hasError.value) return;
+    try {
+      await controller.evaluateJavascript(
+        source:
+            "fetch(location.href, {credentials: 'include', cache: 'no-store'})",
+      );
+      lastPing.value = DateTime.now();
+    } catch (_) {
+      // Ignora: o próximo ciclo tenta de novo.
+    }
+  }
+
+  @override
+  void dispose() {
+    _keepAliveTimer?.cancel();
+    lastPing.dispose();
+    progress.dispose();
+    hasError.dispose();
+    super.dispose();
+  }
+
+  Future<void> _retry() async {
+    hasError.value = false;
+    await webViewController?.reload();
+  }
+
+  Future<void> _onBack() async {
+    final controller = webViewController;
+    if (controller != null && await controller.canGoBack()) {
+      await controller.goBack();
+    } else {
+      await SystemNavigator.pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('SIGA Alunos'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => webViewController?.reload(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _onBack();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: ValueListenableBuilder<DateTime?>(
+            valueListenable: lastPing,
+            builder: (context, ping, _) {
+              final time = ping == null
+                  ? null
+                  : TimeOfDay.fromDateTime(ping).format(context);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('SIGA Alunos'),
+                  if (time != null)
+                    Text(
+                      'Sessão renovada às $time',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                ],
+              );
+            },
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          if (progress < 1.0) LinearProgressIndicator(value: progress),
-          Expanded(
-            child: InAppWebView(
-              initialUrlRequest: URLRequest(
-                url: WebUri(
-                  'https://siga.cps.sp.gov.br/sigaaluno/applogin.aspx',
-                ),
-              ),
-              initialSettings: InAppWebViewSettings(
-                javaScriptEnabled: true,
-                domStorageEnabled: true,
-                thirdPartyCookiesEnabled: true,
-                cacheEnabled: true,
-                userAgent:
-                    'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-              ),
-              onWebViewCreated: (controller) {
-                webViewController = controller;
-              },
-              onProgressChanged: (controller, progress) {
-                setState(() {
-                  this.progress = progress / 100;
-                });
-              },
+          actions: [
+            IconButton(
+              tooltip: 'Recarregar',
+              icon: const Icon(Icons.refresh),
+              onPressed: _retry,
             ),
-          ),
-        ],
+          ],
+        ),
+        body: Column(
+          children: [
+            ValueListenableBuilder<double>(
+              valueListenable: progress,
+              builder: (context, value, _) =>
+                  value < 1.0 ? LinearProgressIndicator(value: value) : const SizedBox.shrink(),
+            ),
+            Expanded(
+              child: Stack(
+                children: [
+                  InAppWebView(
+                    initialUrlRequest: URLRequest(url: WebUri(sigaLoginUrl)),
+                    initialSettings: InAppWebViewSettings(
+                      javaScriptEnabled: true,
+                      domStorageEnabled: true,
+                      thirdPartyCookiesEnabled: true,
+                      cacheEnabled: true,
+                      userAgent: sigaUserAgent,
+                    ),
+                    onWebViewCreated: (controller) {
+                      webViewController = controller;
+                    },
+                    onProgressChanged: (controller, value) {
+                      progress.value = value / 100;
+                    },
+                    onLoadStart: (controller, url) {
+                      hasError.value = false;
+                    },
+                    onReceivedError: (controller, request, error) {
+                      if (request.isForMainFrame ?? false) {
+                        hasError.value = true;
+                      }
+                    },
+                  ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: hasError,
+                    builder: (context, failed, _) {
+                      if (!failed) return const SizedBox.shrink();
+                      return ColoredBox(
+                        color: Theme.of(context).colorScheme.surface,
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.wifi_off, size: 48),
+                              const SizedBox(height: 12),
+                              const Text('Não foi possível carregar o SIGA.'),
+                              const SizedBox(height: 12),
+                              FilledButton(
+                                onPressed: _retry,
+                                child: const Text('Tentar novamente'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
