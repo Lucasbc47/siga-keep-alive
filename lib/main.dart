@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 const String sigaLoginUrl = 'https://siga.cps.sp.gov.br/sigaaluno/applogin.aspx';
+const Duration keepAliveInterval = Duration(minutes: 5);
 const String sigaUserAgent =
     'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
 
@@ -40,9 +43,35 @@ class _SigaWebViewState extends State<SigaWebView> {
   InAppWebViewController? webViewController;
   final ValueNotifier<double> progress = ValueNotifier(0);
   final ValueNotifier<bool> hasError = ValueNotifier(false);
+  final ValueNotifier<DateTime?> lastPing = ValueNotifier(null);
+  Timer? _keepAliveTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _keepAliveTimer = Timer.periodic(keepAliveInterval, (_) => _ping());
+  }
+
+  /// Faz uma requisição autenticada ao SIGA para renovar a sessão.
+  /// Só roda enquanto o processo do app estiver vivo.
+  Future<void> _ping() async {
+    final controller = webViewController;
+    if (controller == null || hasError.value) return;
+    try {
+      await controller.evaluateJavascript(
+        source:
+            "fetch(location.href, {credentials: 'include', cache: 'no-store'})",
+      );
+      lastPing.value = DateTime.now();
+    } catch (_) {
+      // Ignora: o próximo ciclo tenta de novo.
+    }
+  }
 
   @override
   void dispose() {
+    _keepAliveTimer?.cancel();
+    lastPing.dispose();
     progress.dispose();
     hasError.dispose();
     super.dispose();
@@ -71,7 +100,25 @@ class _SigaWebViewState extends State<SigaWebView> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('SIGA Alunos'),
+          title: ValueListenableBuilder<DateTime?>(
+            valueListenable: lastPing,
+            builder: (context, ping, _) {
+              final time = ping == null
+                  ? null
+                  : TimeOfDay.fromDateTime(ping).format(context);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('SIGA Alunos'),
+                  if (time != null)
+                    Text(
+                      'Sessão renovada às $time',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                ],
+              );
+            },
+          ),
           actions: [
             IconButton(
               tooltip: 'Recarregar',
